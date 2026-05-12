@@ -1,6 +1,8 @@
 package game.mygame;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -33,6 +35,8 @@ public class GameScreen implements Screen, GameEventListener {
     private EnemyFactory enemyFactory;
 
     private BitmapFont font;
+    private PauseOverlay pauseOverlay;
+    private InputMultiplexer inputMultiplexer;
 
     private float spawnTimer = 0f;
     private float spawnInterval = 2.0f;
@@ -53,11 +57,20 @@ public class GameScreen implements Screen, GameEventListener {
                 60f
         );
 
-        enemyFactory = new EnemyFactory();
+        enemyFactory = new EnemyFactory(Assets.enemyGreen, Assets.enemyRed, Assets.enemyBlack);
 
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         font.getData().setScale(1.5f);
+
+        pauseOverlay = new PauseOverlay(batch,
+            () -> GameManager.getInstance().setPaused(false),
+            () -> Gdx.app.exit()
+        );
+
+        inputMultiplexer = new InputMultiplexer();
+        inputMultiplexer.addProcessor(pauseOverlay.getStage());
+        Gdx.input.setInputProcessor(inputMultiplexer);
 
         GameManager.getInstance().addListener(this);
     }
@@ -65,7 +78,12 @@ public class GameScreen implements Screen, GameEventListener {
     @Override
     public void render(float delta) {
         GameManager gm = GameManager.getInstance();
-        if (!gm.isGameOver()) update(delta);
+
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            gm.setPaused(!gm.isPaused());
+        }
+
+        if (!gm.isGameOver() && !gm.isPaused()) update(delta);
 
         camera.update();
         batch.setProjectionMatrix(camera.combined);
@@ -93,6 +111,10 @@ public class GameScreen implements Screen, GameEventListener {
         }
 
         batch.end();
+
+        if (gm.isPaused()) {
+            pauseOverlay.render();
+        }
     }
 
     private void update(float delta) {
@@ -168,11 +190,20 @@ public class GameScreen implements Screen, GameEventListener {
         GameManager.getInstance().removeListener(this);
         Assets.dispose();      // ← Теперь всё чистим через Assets
         font.dispose();
+        pauseOverlay.dispose();
     }
 
     @Override public void show() {}
-    @Override public void resize(int w, int h) {}
-    @Override public void pause() {}
+
+    @Override
+    public void resize(int w, int h) {
+        pauseOverlay.resize(w, h);
+    }
+
+    @Override public void pause() {
+        GameManager.getInstance().setPaused(true);
+    }
+
     @Override public void resume() {}
     @Override public void hide() {}
 }
