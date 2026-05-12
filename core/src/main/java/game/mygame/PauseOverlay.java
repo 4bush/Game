@@ -37,6 +37,7 @@ public class PauseOverlay {
 
         Table table = new Table();
         table.setFillParent(true);
+        table.setSkin(skin);
         stage.addActor(table);
 
         TextButton resumeButton = new TextButton("Resume", skin);
@@ -69,6 +70,10 @@ public class PauseOverlay {
         pixmap.setColor(Color.WHITE);
         pixmap.fill();
         skin.add("white", new Texture(pixmap));
+
+        com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle labelStyle = new com.badlogic.gdx.scenes.scene2d.ui.Label.LabelStyle();
+        labelStyle.font = skin.getFont("default");
+        skin.add("default", labelStyle);
 
         TextButton.TextButtonStyle textButtonStyle = new TextButton.TextButtonStyle();
         textButtonStyle.up = skin.newDrawable("white", Color.DARK_GRAY);
