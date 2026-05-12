@@ -4,12 +4,11 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
-
 import com.badlogic.gdx.math.Rectangle;
+
 import game.mygame.entities.Bullet;
 import game.mygame.entities.Enemy;
 import game.mygame.entities.Player;
@@ -28,14 +27,6 @@ public class GameScreen implements Screen, GameEventListener {
     private final SpriteBatch batch;
     private final OrthographicCamera camera;
 
-    private Texture playerTex;
-    private Texture bulletTex;
-    private Texture bgTex;
-    private Texture slowEnemyTex;
-    private Texture fastEnemyTex;
-    private Texture tankEnemyTex;
-
-
     private Player player;
     private final List<Enemy> enemies = new ArrayList<>();
 
@@ -48,8 +39,6 @@ public class GameScreen implements Screen, GameEventListener {
 
     private String statusMessage = "";
 
-
-
     public GameScreen(SpaceShooter game) {
         this.game = game;
         this.batch = game.batch;
@@ -57,28 +46,20 @@ public class GameScreen implements Screen, GameEventListener {
         camera = new OrthographicCamera();
         camera.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        loadAssets();
+        Assets.load();
 
         player = new Player(
-                Gdx.graphics.getWidth() / 2f - playerTex.getWidth() / 2f,
-                60f, playerTex, bulletTex
+                Gdx.graphics.getWidth() / 2f - 35,
+                60f
         );
-        enemyFactory = new EnemyFactory(slowEnemyTex, fastEnemyTex, tankEnemyTex);
+
+        enemyFactory = new EnemyFactory();
 
         font = new BitmapFont();
         font.setColor(Color.WHITE);
         font.getData().setScale(1.5f);
 
         GameManager.getInstance().addListener(this);
-    }
-
-    private void loadAssets() {
-        bgTex        = new Texture("background.png");
-        playerTex    = new Texture("playerShip1_blue.png");
-        bulletTex    = new Texture("laserBlue01.png");
-        slowEnemyTex = new Texture("enemyBlack1.png");
-        fastEnemyTex = new Texture("enemyRed1.png");
-        tankEnemyTex = new Texture("enemyGreen1.png");
     }
 
     @Override
@@ -90,7 +71,7 @@ public class GameScreen implements Screen, GameEventListener {
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        batch.draw(bgTex, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
         player.draw(batch);
         for (Enemy e : enemies) e.draw(batch);
@@ -158,13 +139,13 @@ public class GameScreen implements Screen, GameEventListener {
                     }
                 }
             }
-            Rectangle playerBounds = player.getBounds();
             if (enemy.getBounds().overlaps(player.getBounds())) {
                 enemy.hit(999);
                 gm.loseLife();
             }
         }
     }
+
     @Override
     public void onGameEvent(GameEvent event) {
         switch (event) {
@@ -185,12 +166,7 @@ public class GameScreen implements Screen, GameEventListener {
     @Override
     public void dispose() {
         GameManager.getInstance().removeListener(this);
-        playerTex.dispose();
-        bulletTex.dispose();
-        bgTex.dispose();
-        slowEnemyTex.dispose();
-        fastEnemyTex.dispose();
-        tankEnemyTex.dispose();
+        Assets.dispose();      // ← Теперь всё чистим через Assets
         font.dispose();
     }
 
@@ -199,5 +175,4 @@ public class GameScreen implements Screen, GameEventListener {
     @Override public void pause() {}
     @Override public void resume() {}
     @Override public void hide() {}
-
 }
