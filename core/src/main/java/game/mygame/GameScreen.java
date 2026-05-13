@@ -57,7 +57,7 @@ public class GameScreen implements Screen, GameEventListener {
                 60f
         );
 
-        enemyFactory = new EnemyFactory(Assets.enemyGreen, Assets.enemyRed, Assets.enemyBlack);
+        enemyFactory = new EnemyFactory(Assets.enemyGreen, Assets.enemyRed, Assets.enemyBlack, Assets.enemyGreen);
 
         font = new BitmapFont();
         font.setColor(Color.WHITE);
@@ -132,10 +132,11 @@ public class GameScreen implements Screen, GameEventListener {
             float x = MathUtils.random(20f, Gdx.graphics.getWidth() - 80f);
             float y = Gdx.graphics.getHeight() + 10f;
 
-            int roll = MathUtils.random(2);
+            int roll = MathUtils.random(3);
             EnemyFactory.EnemyType type;
             if (roll == 0)      type = EnemyFactory.EnemyType.FAST;
             else if (roll == 1) type = EnemyFactory.EnemyType.TANK;
+            else if (roll == 2) type = EnemyFactory.EnemyType.ZIGZAG;
             else                type = EnemyFactory.EnemyType.SLOW;
 
             enemies.add(enemyFactory.create(type, x, y));
