@@ -12,39 +12,44 @@ Star Defender is a fast-paced 2D vertical scrolling space shooter. The player co
 
 ## 2. Controls
 - **Movement:**
+  - W / ↑ - Move Up
+  - S / ↓ - Move Down
   - A / ← - Move Left
   - D / → - Move Right
-- **Shoot:** Space
-- **Pause:** ESC
+- **Shoot:** Space (auto-fire while held)
+- **Pause:** P
+- **Ultimate Ability:** Q (powerful shot with cooldown)
 - **Menu:** Left Mouse Click
 
 ## 3. Player
 **Stats:**
-- Lives: 3
+- Health (HP): 100
 - Speed: 300 pixels/second
 - Starting weapon: Single Shot
 
 **Abilities:**
-- Short invulnerability after taking damage (TBD)
+- Collect power-ups to change weapon type
+- Ultimate ability (Q) - strong attack with long cooldown
+- Short invulnerability after taking damage
 
 ## 4. Enemies and Objects
 
 **Enemies:**
-- **Slow Enemy** - medium speed, low HP (2)
-- **Fast Enemy** - small, very fast, low HP (1)
-- **Tank Enemy** - large, slow, high HP (5)
-- **Zigzag Enemy** - moves in a zigzag pattern
+- **Fast Enemy** - small, very fast, low HP (20)
+- **Tank Enemy** - large, slow, high HP (80)
+- **Shooter Enemy** - medium speed, shoots at player (40 HP)
 - **Boss** - appears every ~400 points, very strong with multiple attack phases
 
 **Objects:**
-- Projectiles from player
+- **Power-ups:** Weapon Upgrade or Health Pack (+30 HP)
+- Projectiles from player and enemies
 
 ## 5. Levels
 The game features one endless vertically scrolling level. The background scrolls down continuously with parallax effect. Difficulty increases over time - enemies spawn more frequently and move faster. A Boss appears every 400 points. There are no separate levels — the challenge is pure survival and score chasing.
 
 ## 6. Win / Lose Conditions
 - **Win Condition:** There is no traditional win. The player tries to get the highest possible score (High Score is saved).
-- **Lose Condition:** Player’s Lives reach 0 → Game Over screen.
+- **Lose Condition:** Player’s HP reaches 0 → Game Over screen.
 - **Game Over Screen** shows final score, high score, and buttons: **Restart** and **Main Menu**.
 
 ## 7. Art Style and Audio
