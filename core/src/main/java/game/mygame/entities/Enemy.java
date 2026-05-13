@@ -4,7 +4,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 
-public class Enemy {
+public class Enemy implements EnemyPrototype {
         protected float x, y;
         protected float speed;
         protected int health;
@@ -42,5 +42,30 @@ public class Enemy {
         public boolean isAlive()      { return alive; }
         public int getScoreValue()    { return scoreValue; }
 
+        // EnemyPrototype implementation
+        @Override
+        public EnemyPrototype clone() {
+            return new Enemy(x, y, speed, health, scoreValue, texture);
+        }
 
+        @Override
+        public float getX() { return x; }
+
+        @Override
+        public float getY() { return y; }
+
+        @Override
+        public float getSpeed() { return speed; }
+
+        @Override
+        public int getHealth() { return health; }
+
+        @Override
+        public Texture getTexture() { return texture; }
+
+        @Override
+        public float getWidth() { return width; }
+
+        @Override
+        public float getHeight() { return height; }
 }

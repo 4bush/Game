@@ -12,6 +12,7 @@ public class GameManager {
     private int score;
     private int lives;
     private boolean gameOver;
+    private boolean paused;
     private final List<GameEventListener> listeners = new ArrayList<>();
     private GameManager() {}
 
@@ -26,6 +27,7 @@ public class GameManager {
         score = 0;
         lives = 3;
         gameOver = false;
+        paused = false;
     }
 
     public void addListener(GameEventListener listener) {
@@ -60,4 +62,11 @@ public class GameManager {
     public int getScore()       { return score; }
     public int getLives()       { return lives; }
     public boolean isGameOver() { return gameOver; }
+    public boolean isPaused()   { return paused; }
+
+    public void setPaused(boolean paused) {
+        if (this.gameOver) return;
+        this.paused = paused;
+        notify(paused ? GameEvent.GAME_PAUSED : GameEvent.GAME_RESUMED);
+    }
 }
