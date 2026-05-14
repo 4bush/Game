@@ -31,18 +31,26 @@ public class GameOverState implements State {
 
     @Override
     public void render(SpriteBatch batch) {
+        if (batch == null) return;
+
         GameManager gm = GameManager.getInstance();
 
-        // Draw background
-        batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        // Draw background safely
+        if (Assets.background != null) {
+            batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        }
 
         // Draw GAME OVER text
-        largeFont.draw(batch, "GAME OVER",
-            Gdx.graphics.getWidth() / 2f - 100, Gdx.graphics.getHeight() / 2f);
+        if (largeFont != null) {
+            largeFont.draw(batch, "GAME OVER",
+                Gdx.graphics.getWidth() / 2f - 100, Gdx.graphics.getHeight() / 2f);
+        }
 
         // Draw final score
-        font.draw(batch, "Final Score: " + gm.getScore(),
-            Gdx.graphics.getWidth() / 2f - 80, Gdx.graphics.getHeight() / 2f - 50);
+        if (font != null && gm != null) {
+            font.draw(batch, "Final Score: " + gm.getScore(),
+                Gdx.graphics.getWidth() / 2f - 80, Gdx.graphics.getHeight() / 2f - 50);
+        }
     }
 
     @Override

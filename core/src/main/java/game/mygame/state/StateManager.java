@@ -6,34 +6,55 @@ public class StateManager {
     private State currentState;
 
     public StateManager() {
-        // Start with MainMenuState or something, but will be set later
+        // Start with null state
     }
 
     public void changeState(State newState) {
-        if (currentState != null) {
-            currentState.exit();
-        }
-        currentState = newState;
-        if (currentState != null) {
-            currentState.enter();
+        try {
+            if (currentState != null) {
+                currentState.exit();
+            }
+            currentState = newState;
+            if (currentState != null) {
+                currentState.enter();
+            }
+        } catch (Exception e) {
+            System.err.println("Error changing state: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public void update(float delta) {
-        if (currentState != null) {
-            currentState.update(delta);
+        try {
+            if (currentState != null) {
+                currentState.update(delta);
+            }
+        } catch (Exception e) {
+            System.err.println("Error updating state: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public void render(SpriteBatch batch) {
-        if (currentState != null) {
-            currentState.render(batch);
+        try {
+            if (currentState != null && batch != null) {
+                currentState.render(batch);
+            }
+        } catch (Exception e) {
+            System.err.println("Error rendering state: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     public void dispose() {
-        if (currentState != null) {
-            currentState.exit();
+        try {
+            if (currentState != null) {
+                currentState.exit();
+                currentState = null;
+            }
+        } catch (Exception e) {
+            System.err.println("Error disposing state: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

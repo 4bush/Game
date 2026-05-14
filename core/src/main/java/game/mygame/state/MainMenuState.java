@@ -31,18 +31,26 @@ public class MainMenuState implements State {
 
     @Override
     public void render(SpriteBatch batch) {
+        if (batch == null) return;
+
         // Draw background
-        batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        if (Assets.background != null) {
+            batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        }
 
         // Draw title
-        titleFont.draw(batch, "Space Shooter",
-            Gdx.graphics.getWidth() / 2f - 150, Gdx.graphics.getHeight() / 2f + 100);
+        if (titleFont != null) {
+            titleFont.draw(batch, "Space Shooter",
+                Gdx.graphics.getWidth() / 2f - 150, Gdx.graphics.getHeight() / 2f + 100);
+        }
 
         // Draw menu
-        menuFont.draw(batch, "Press SPACE or ENTER to Start",
-            Gdx.graphics.getWidth() / 2f - 180, Gdx.graphics.getHeight() / 2f - 50);
-        menuFont.draw(batch, "Press ESC to Exit",
-            Gdx.graphics.getWidth() / 2f - 120, Gdx.graphics.getHeight() / 2f - 100);
+        if (menuFont != null) {
+            menuFont.draw(batch, "Press SPACE or ENTER to Start",
+                Gdx.graphics.getWidth() / 2f - 180, Gdx.graphics.getHeight() / 2f - 50);
+            menuFont.draw(batch, "Press ESC to Exit",
+                Gdx.graphics.getWidth() / 2f - 120, Gdx.graphics.getHeight() / 2f - 100);
+        }
     }
 
     @Override

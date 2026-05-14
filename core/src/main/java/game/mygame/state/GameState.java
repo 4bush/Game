@@ -131,7 +131,10 @@ public class GameState implements State, GameEventListener {
     private void checkCollisions() {
         GameManager gm = GameManager.getInstance();
 
-        for (Enemy enemy : enemies) {
+        // Create a copy of enemies list to avoid ConcurrentModificationException
+        List<Enemy> enemiesCopy = new ArrayList<>(enemies);
+
+        for (Enemy enemy : enemiesCopy) {
             if (!enemy.isAlive()) continue;
 
             // Bullet-Enemy collision
@@ -159,6 +162,8 @@ public class GameState implements State, GameEventListener {
 
     @Override
     public void onGameEvent(GameEvent event) {
+        if (!isActive) return;  // Ignore events if state is not active
+
         switch (event) {
             case ENEMY_KILLED:
                 statusMessage = "+Score!";
