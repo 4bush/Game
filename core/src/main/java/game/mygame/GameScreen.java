@@ -2,7 +2,6 @@ package game.mygame;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -10,8 +9,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import game.mygame.observer.GameEvent;
 import game.mygame.observer.GameEventListener;
 import game.mygame.state.GameOverState;
-import game.mygame.state.PlayingState;
+import game.mygame.state.GameState;
+import game.mygame.state.MainMenuState;
+import game.mygame.state.PauseState;
 import game.mygame.state.State;
+import game.mygame.state.StateManager;
 
 public class GameScreen implements Screen, GameEventListener {
 
@@ -19,12 +21,11 @@ public class GameScreen implements Screen, GameEventListener {
     private final SpriteBatch batch;
     private final OrthographicCamera camera;
 
-    private State currentState;
-    private final PlayingState playingState;
+    private final StateManager stateManager;
+    private final MainMenuState mainMenuState;
+    private final GameState gameState;
+    private final PauseState pauseState;
     private final GameOverState gameOverState;
-
-    private PauseOverlay pauseOverlay;
-    private InputMultiplexer inputMultiplexer;
 
     public GameScreen(SpaceShooter game) {
         this.game = game;
@@ -35,85 +36,78 @@ public class GameScreen implements Screen, GameEventListener {
 
         Assets.load();
 
-        // Initialize states
-        playingState = new PlayingState();
+        // Initialize state manager and states
+        stateManager = new StateManager();
+        mainMenuState = new MainMenuState();
+        gameState = new GameState();
+        pauseState = new PauseState();
         gameOverState = new GameOverState();
 
-        // Start with playing state
-        currentState = playingState;
-        currentState.enter();
-
-        pauseOverlay = new PauseOverlay(batch,
-            () -> GameManager.getInstance().setPaused(false),
-            () -> Gdx.app.exit()
-        );
-
-        inputMultiplexer = new InputMultiplexer();
-        inputMultiplexer.addProcessor(pauseOverlay.getStage());
-        Gdx.input.setInputProcessor(inputMultiplexer);
+        // Start with main menu state
+        stateManager.changeState(mainMenuState);
 
         GameManager.getInstance().addListener(this);
     }
 
     @Override
     public void render(float delta) {
-        GameManager gm = GameManager.getInstance();
+        try {
+            // Handle input for state transitions
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                State current = stateManager.getCurrentState();
+                if (current instanceof GameState) {
+                    stateManager.changeState(pauseState);
+                } else if (current instanceof PauseState || current instanceof GameOverState) {
+                    Gdx.app.exit();
+                }
+            }
 
-        // Handle pause toggle
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            gm.setPaused(!gm.isPaused());
-        }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                State current = stateManager.getCurrentState();
+                if (current instanceof MainMenuState) {
+                    GameManager.getInstance().init();
+                    stateManager.changeState(gameState);
+                } else if (current instanceof PauseState) {
+                    stateManager.changeState(gameState);
+                } else if (current instanceof GameOverState) {
+                    GameManager.getInstance().init();
+                    stateManager.changeState(mainMenuState);
+                }
+            }
 
-        // Update current state if not paused
-        if (!gm.isPaused()) {
-            currentState.update(delta);
-        }
+            // Update and render
+            camera.update();
+            batch.setProjectionMatrix(camera.combined);
+            batch.begin();
 
-        // Render
-        camera.update();
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
+            stateManager.update(delta);
+            stateManager.render(batch);
 
-        currentState.render(batch);
-
-        batch.end();
-
-        // Render pause overlay if paused
-        if (gm.isPaused()) {
-            pauseOverlay.render();
+            batch.end();
+        } catch (Exception e) {
+            System.err.println("Error in GameScreen render: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     @Override
     public void onGameEvent(GameEvent event) {
         if (event == GameEvent.GAME_OVER) {
-            switchState(gameOverState);
+            stateManager.changeState(gameOverState);
         }
-    }
-
-    private void switchState(State newState) {
-        if (currentState != null) {
-            currentState.exit();
-        }
-        currentState = newState;
-        currentState.enter();
     }
 
     @Override
     public void dispose() {
         GameManager.getInstance().removeListener(this);
-        if (currentState != null) {
-            currentState.exit();
-        }
         Assets.dispose();
-        pauseOverlay.dispose();
+        stateManager.dispose();
     }
 
     @Override public void show() {}
 
     @Override
     public void resize(int w, int h) {
-        pauseOverlay.resize(w, h);
     }
 
     @Override public void pause() {

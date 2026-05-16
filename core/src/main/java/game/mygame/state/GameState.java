@@ -18,7 +18,7 @@ import game.mygame.observer.GameEventListener;
 import java.util.ArrayList;
 import java.util.List;
 
-public class PlayingState implements State, GameEventListener {
+public class GameState implements State, GameEventListener {
 
     private Player player;
     private final List<Enemy> enemies = new ArrayList<>();
@@ -29,6 +29,7 @@ public class PlayingState implements State, GameEventListener {
 
     private BitmapFont font;
     private String statusMessage = "";
+    private boolean isActive = false;
 
     @Override
     public void enter() {
@@ -51,12 +52,15 @@ public class PlayingState implements State, GameEventListener {
         spawnTimer = 0f;
         spawnInterval = 2.0f;
         statusMessage = "";
+        isActive = true;
 
         GameManager.getInstance().addListener(this);
     }
 
     @Override
     public void update(float delta) {
+        if (!isActive) return;
+
         player.update(delta);
         spawnEnemies(delta);
 
@@ -70,6 +74,8 @@ public class PlayingState implements State, GameEventListener {
 
     @Override
     public void render(SpriteBatch batch) {
+        if (player == null) return;
+
         GameManager gm = GameManager.getInstance();
 
         // Draw background
@@ -99,6 +105,7 @@ public class PlayingState implements State, GameEventListener {
             font.dispose();
         }
         enemies.clear();
+        isActive = false;
     }
 
     private void spawnEnemies(float delta) {
@@ -124,11 +131,16 @@ public class PlayingState implements State, GameEventListener {
     private void checkCollisions() {
         GameManager gm = GameManager.getInstance();
 
-        for (Enemy enemy : enemies) {
+        // Create a copy of enemies list to avoid ConcurrentModificationException
+        List<Enemy> enemiesCopy = new ArrayList<>(enemies);
+
+        for (Enemy enemy : enemiesCopy) {
             if (!enemy.isAlive()) continue;
 
             // Bullet-Enemy collision
-            for (Bullet bullet : player.getBullets()) {
+            // Create a copy to avoid ConcurrentModificationException
+            List<Bullet> bulletsCopy = new ArrayList<>(player.getBullets());
+            for (Bullet bullet : bulletsCopy) {
                 if (!bullet.isAlive()) continue;
                 if (bullet.getBounds().overlaps(enemy.getBounds())) {
                     bullet.destroy();
@@ -150,6 +162,8 @@ public class PlayingState implements State, GameEventListener {
 
     @Override
     public void onGameEvent(GameEvent event) {
+        if (!isActive) return;  // Ignore events if state is not active
+
         switch (event) {
             case ENEMY_KILLED:
                 statusMessage = "+Score!";
