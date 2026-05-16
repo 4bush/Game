@@ -39,7 +39,9 @@ public class GameManager {
     }
 
     public void notify(GameEvent event) {
-        for (GameEventListener l : listeners) {
+        List<GameEventListener> targets = new ArrayList<>(listeners);
+
+        for (GameEventListener l : targets) {
             l.onGameEvent(event);
         }
     }
