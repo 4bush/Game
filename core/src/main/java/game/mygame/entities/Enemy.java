@@ -7,7 +7,7 @@ import com.badlogic.gdx.math.Rectangle;
 public class Enemy implements EnemyPrototype {
         protected float x, y;
         protected float speed;
-        protected int health;
+        protected float health;
         protected int scoreValue;
         protected final float width, height;
         protected final Texture texture;
@@ -17,7 +17,7 @@ public class Enemy implements EnemyPrototype {
             this.x = x;
             this.y = y;
             this.speed = speed;
-            this.health = health;
+            this.health = health; // Автоматическое преобразование int в float
             this.scoreValue = scoreValue;
             this.texture = texture;
             this.width = texture.getWidth();
@@ -33,7 +33,7 @@ public class Enemy implements EnemyPrototype {
             if (alive) batch.draw(texture, x, y, width, height);
         }
 
-        public void hit(int damage) {
+        public void hit(float damage) {
             health -= damage;
             if (health <= 0) alive = false;
         }
@@ -45,7 +45,7 @@ public class Enemy implements EnemyPrototype {
         // EnemyPrototype implementation
         @Override
         public EnemyPrototype clone() {
-            return new Enemy(x, y, speed, health, scoreValue, texture);
+            return new Enemy(x, y, speed, (int) health, scoreValue, texture);
         }
 
         @Override
@@ -58,7 +58,7 @@ public class Enemy implements EnemyPrototype {
         public float getSpeed() { return speed; }
 
         @Override
-        public int getHealth() { return health; }
+        public float getHealth() { return health; }
 
         @Override
         public Texture getTexture() { return texture; }

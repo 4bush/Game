@@ -8,7 +8,7 @@ public interface EnemyPrototype {
     float getX();
     float getY();
     float getSpeed();
-    int getHealth();
+    float getHealth();
     int getScoreValue();
     Texture getTexture();
     boolean isAlive();

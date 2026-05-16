@@ -7,8 +7,8 @@ import com.badlogic.gdx.math.Rectangle;
 public class Boss {
     protected float x, y;
     protected float speed;
-    protected int health;
-    protected int maxHealth;
+    protected float health;
+    protected float maxHealth;
     protected int scoreValue;
     protected final float width, height;
     protected final Texture texture;
@@ -52,7 +52,7 @@ public class Boss {
         }
     }
 
-    public void hit(int damage) {
+    public void hit(float damage) {
         health -= damage;
         if (health <= 0) {
             alive = false;
