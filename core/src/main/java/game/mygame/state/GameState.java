@@ -1,6 +1,7 @@
 package game.mygame.state;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -11,9 +12,16 @@ import game.mygame.GameManager;
 import game.mygame.entities.Bullet;
 import game.mygame.entities.Enemy;
 import game.mygame.entities.Player;
+import game.mygame.entities.PierceBullet;
+import game.mygame.entities.SplashBullet;
 import game.mygame.factory.EnemyFactory;
 import game.mygame.observer.GameEvent;
 import game.mygame.observer.GameEventListener;
+import game.mygame.weapon.WeaponStrategy;
+import game.mygame.weapon.SingleShotStrategy;
+import game.mygame.weapon.DoubleShotStrategy;
+import game.mygame.weapon.PierceStrategy;
+import game.mygame.weapon.SplashStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,6 +38,11 @@ public class GameState implements State, GameEventListener {
     private BitmapFont font;
     private String statusMessage = "";
     private boolean isActive = false;
+
+    // Доступные стратегии вооружения
+    private final WeaponStrategy[] strategies = new WeaponStrategy[4];
+    private String weaponSwitchMessage = "";
+    private float weaponSwitchMessageTimer = 0f;
 
     @Override
     public void enter() {
@@ -54,6 +67,15 @@ public class GameState implements State, GameEventListener {
         statusMessage = "";
         isActive = true;
 
+        // Инициализировать стратегии вооружения
+        strategies[0] = new SingleShotStrategy();
+        strategies[1] = new DoubleShotStrategy();
+        strategies[2] = new PierceStrategy();
+        strategies[3] = new SplashStrategy();
+
+        // Установить первую стратегию (SingleShot)
+        player.setWeaponStrategy(strategies[0]);
+
         GameManager.getInstance().addListener(this);
     }
 
@@ -70,6 +92,12 @@ public class GameState implements State, GameEventListener {
 
         checkCollisions();
         enemies.removeIf(e -> !e.isAlive());
+
+        // Обработать смену стратегии вооружения
+        handleWeaponSwitch();
+
+        // Обновить таймер сообщения о смене оружия
+        weaponSwitchMessageTimer -= delta;
     }
 
     @Override
@@ -91,10 +119,31 @@ public class GameState implements State, GameEventListener {
         font.draw(batch, "Score: " + gm.getScore(), 10, Gdx.graphics.getHeight() - 10);
         font.draw(batch, "Lives: " + gm.getLives(), 10, Gdx.graphics.getHeight() - 35);
 
+        // Отобразить текущую стратегию вооружения с полной информацией
+        String weaponInfo = "Weapon: " + player.getCurrentStrategy().getDisplayName() +
+                           " | Dmg:" + String.format("%.1f", player.getCurrentStrategy().getDamage());
+        font.draw(batch, weaponInfo, 10, Gdx.graphics.getHeight() - 60);
+
+        // Отобразить подсказку по переключению оружия
+        font.setColor(Color.YELLOW);
+        font.getData().setScale(1f);
+        font.draw(batch, "Press 1-4 to switch weapons", 10, 30);
+        font.setColor(Color.WHITE);
+        font.getData().setScale(1.5f);
+
         // Draw status message
         if (!statusMessage.isEmpty()) {
             font.draw(batch, statusMessage, Gdx.graphics.getWidth() / 2f - 60,
                 Gdx.graphics.getHeight() / 2f + 80);
+        }
+
+        // Draw weapon switch message
+        if (weaponSwitchMessageTimer > 0) {
+            font.setColor(Color.LIME);
+            font.getData().setScale(1.2f);
+            font.draw(batch, weaponSwitchMessage, Gdx.graphics.getWidth() / 2f - 100, Gdx.graphics.getHeight() / 2f + 150);
+            font.setColor(Color.WHITE);
+            font.getData().setScale(1.5f);
         }
     }
 
@@ -143,11 +192,33 @@ public class GameState implements State, GameEventListener {
             for (Bullet bullet : bulletsCopy) {
                 if (!bullet.isAlive()) continue;
                 if (bullet.getBounds().overlaps(enemy.getBounds())) {
-                    bullet.destroy();
-                    enemy.hit(1);
-                    if (!enemy.isAlive()) {
-                        gm.addScore(enemy.getScoreValue());
-                        gm.notify(GameEvent.ENEMY_KILLED);
+                    // Получить урон из текущей стратегии
+                    float damage = player.getCurrentStrategy().getDamage();
+
+                    // Обработать специальные типы пуль
+                    if (bullet instanceof PierceBullet) {
+                        // Пробивающая пуля - не уничтожается, но наносит урон
+                        PierceBullet pierceBullet = (PierceBullet) bullet;
+                        enemy.hit(damage); // Урон зависит от стратегии (float)
+                        pierceBullet.onEnemyHit();
+                        if (!enemy.isAlive()) {
+                            gm.addScore(enemy.getScoreValue());
+                            gm.notify(GameEvent.ENEMY_KILLED);
+                        }
+                    } else if (bullet instanceof SplashBullet) {
+                        // Взрывная пуля - при попадании вызывает взрыв
+                        SplashBullet splashBullet = (SplashBullet) bullet;
+                        splashBullet.explode();
+                        // Урон всем врагам в радиусе
+                        damageSurroundingEnemies(splashBullet, gm, enemiesCopy, damage);
+                    } else {
+                        // Обычная пуля
+                        bullet.destroy();
+                        enemy.hit(damage); // Урон зависит от стратегии (float)
+                        if (!enemy.isAlive()) {
+                            gm.addScore(enemy.getScoreValue());
+                            gm.notify(GameEvent.ENEMY_KILLED);
+                        }
                     }
                 }
             }
@@ -156,6 +227,34 @@ public class GameState implements State, GameEventListener {
             if (enemy.getBounds().overlaps(player.getBounds())) {
                 enemy.hit(999);
                 gm.loseLife();
+            }
+        }
+    }
+
+    /**
+     * Нанести урон всем врагам в радиусе взрыва.
+     */
+    private void damageSurroundingEnemies(SplashBullet splashBullet, GameManager gm, List<Enemy> enemies, float damage) {
+        float splashRadius = splashBullet.getSplashRadius();
+        float bulletX = splashBullet.getBounds().x;
+        float bulletY = splashBullet.getBounds().y;
+
+        for (Enemy enemy : enemies) {
+            if (!enemy.isAlive()) continue;
+
+            float enemyX = enemy.getBounds().x + enemy.getBounds().width / 2;
+            float enemyY = enemy.getBounds().y + enemy.getBounds().height / 2;
+
+            float distance = (float) Math.sqrt((bulletX - enemyX) * (bulletX - enemyX) +
+                                              (bulletY - enemyY) * (bulletY - enemyY));
+
+            if (distance <= splashRadius) {
+                // Урон зависит от стратегии (Splash вернёт 0.25)
+                enemy.hit(damage);
+                if (!enemy.isAlive()) {
+                    gm.addScore(enemy.getScoreValue());
+                    gm.notify(GameEvent.ENEMY_KILLED);
+                }
             }
         }
     }
@@ -176,6 +275,32 @@ public class GameState implements State, GameEventListener {
                 break;
             default:
                 break;
+        }
+    }
+
+    /**
+     * Обработать переключение стратегии вооружения по клавишам 1-4.
+     */
+    private void handleWeaponSwitch() {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
+            switchWeapon(0);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_2)) {
+            switchWeapon(1);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_3)) {
+            switchWeapon(2);
+        } else if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_4)) {
+            switchWeapon(3);
+        }
+    }
+
+    /**
+     * Переключить на стратегию с указанным индексом.
+     */
+    private void switchWeapon(int index) {
+        if (index >= 0 && index < strategies.length && strategies[index] != null) {
+            player.setWeaponStrategy(strategies[index]);
+            weaponSwitchMessage = "Weapon: " + strategies[index].getDisplayName();
+            weaponSwitchMessageTimer = 1.5f; // Показать сообщение на 1.5 секунды
         }
     }
 }
