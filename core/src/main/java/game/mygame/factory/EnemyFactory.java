@@ -2,14 +2,20 @@ package game.mygame.factory;
 
 import com.badlogic.gdx.graphics.Texture;
 import game.mygame.entities.Enemy;
+import game.mygame.entities.Boss;
 import game.mygame.entities.ZigzagEnemy;
 
+/**
+ * Handles creation of game adversaries.
+ * Open/Closed Principle (OCP) compliant: easily accepts new enemy subclasses.
+ */
 public class EnemyFactory {
     public enum EnemyType {
         SLOW,
         FAST,
         TANK,
-        ZIGZAG
+        ZIGZAG,
+        BOSS
     }
 
     private final Texture slowTexture;
@@ -32,6 +38,9 @@ public class EnemyFactory {
                 return new Enemy(x, y,  60f, 5, 200, tankTexture);
             case ZIGZAG:
                 return new ZigzagEnemy(x, y, 100f, 2, 150, zigzagTexture);
+            case BOSS:
+                // Instantiates a robust boss enemy with 25 HP and a 400 point reward
+                return new Boss(x, y, 25, 400, tankTexture);
             case SLOW:
             default:
                 return new Enemy(x, y, 120f, 2, 100, slowTexture);

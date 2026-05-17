@@ -6,5 +6,7 @@ public enum GameEvent {
     GAME_OVER,
     ENEMY_KILLED,
     GAME_PAUSED,
-    GAME_RESUMED
+    GAME_RESUMED,
+    BOSS_SPAWNED,
+    BOSS_DEFEATED
 }

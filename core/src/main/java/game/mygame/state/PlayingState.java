@@ -10,6 +10,7 @@ import game.mygame.Assets;
 import game.mygame.GameManager;
 import game.mygame.entities.Bullet;
 import game.mygame.entities.Enemy;
+import game.mygame.entities.Boss;
 import game.mygame.entities.Player;
 import game.mygame.factory.EnemyFactory;
 import game.mygame.observer.GameEvent;
@@ -29,6 +30,9 @@ public class PlayingState implements State, GameEventListener {
 
     private BitmapFont font;
     private String statusMessage = "";
+
+    private boolean bossActive = false;
+    private int lastBossScoreThreshold = 0;
 
     @Override
     public void enter() {
@@ -51,6 +55,8 @@ public class PlayingState implements State, GameEventListener {
         spawnTimer = 0f;
         spawnInterval = 2.0f;
         statusMessage = "";
+        bossActive = false;
+        lastBossScoreThreshold = 0;
 
         GameManager.getInstance().addListener(this);
     }
@@ -58,7 +64,11 @@ public class PlayingState implements State, GameEventListener {
     @Override
     public void update(float delta) {
         player.update(delta);
-        spawnEnemies(delta);
+
+        if (!bossActive) {
+            spawnEnemies(delta);
+            checkBossSpawnCondition();
+        }
 
         for (Enemy e : enemies) {
             e.update(delta);
@@ -68,26 +78,56 @@ public class PlayingState implements State, GameEventListener {
         enemies.removeIf(e -> !e.isAlive());
     }
 
+    private void checkBossSpawnCondition() {
+        GameManager gm = GameManager.getInstance();
+        int currentScore = gm.getScore();
+
+        if (currentScore > 0 && (currentScore / 400) > lastBossScoreThreshold) {
+            lastBossScoreThreshold = currentScore / 400;
+            triggerBossFight();
+        }
+    }
+
+    private void triggerBossFight() {
+        bossActive = true;
+        statusMessage = "WARNING: BOSS APPROACHING!";
+
+        // Center boss at top boundary above active viewport layout
+        float bossX = Gdx.graphics.getWidth() / 2f - 32f;
+        float bossY = Gdx.graphics.getHeight() + 40f;
+
+        Enemy boss = enemyFactory.create(EnemyFactory.EnemyType.BOSS, bossX, bossY);
+        enemies.add(boss);
+
+        GameManager.getInstance().notify(GameEvent.BOSS_SPAWNED);
+    }
+
     @Override
     public void render(SpriteBatch batch) {
         GameManager gm = GameManager.getInstance();
 
-        // Draw background
         batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        // Draw player and enemies
         player.draw(batch);
         for (Enemy e : enemies) {
             e.draw(batch);
         }
 
-        // Draw HUD
         font.draw(batch, "Score: " + gm.getScore(), 10, Gdx.graphics.getHeight() - 10);
         font.draw(batch, "Lives: " + gm.getLives(), 10, Gdx.graphics.getHeight() - 35);
 
-        // Draw status message
+        if (bossActive) {
+            for (Enemy e : enemies) {
+                if (e instanceof Boss) {
+                    Boss b = (Boss) e;
+                    font.draw(batch, "BOSS HP: " + (int)(b.getHealthPercentage() * 100) + "%",
+                        Gdx.graphics.getWidth() - 160, Gdx.graphics.getHeight() - 10);
+                }
+            }
+        }
+
         if (!statusMessage.isEmpty()) {
-            font.draw(batch, statusMessage, Gdx.graphics.getWidth() / 2f - 60,
+            font.draw(batch, statusMessage, Gdx.graphics.getWidth() / 2f - 120,
                 Gdx.graphics.getHeight() / 2f + 80);
         }
     }
@@ -127,7 +167,6 @@ public class PlayingState implements State, GameEventListener {
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) continue;
 
-            // Bullet-Enemy collision
             for (Bullet bullet : player.getBullets()) {
                 if (!bullet.isAlive()) continue;
                 if (bullet.getBounds().overlaps(enemy.getBounds())) {
@@ -140,7 +179,6 @@ public class PlayingState implements State, GameEventListener {
                 }
             }
 
-            // Player-Enemy collision
             if (enemy.getBounds().overlaps(player.getBounds())) {
                 enemy.hit(999);
                 gm.loseLife();
@@ -159,6 +197,10 @@ public class PlayingState implements State, GameEventListener {
                 break;
             case GAME_OVER:
                 statusMessage = "";
+                break;
+            case BOSS_DEFEATED:
+                bossActive = false;
+                statusMessage = "BOSS DEFEATED! Endless loop resumed.";
                 break;
             default:
                 break;
