@@ -61,6 +61,11 @@ public class GameManager {
         }
     }
 
+    public void addLife() {
+        lives++;
+        notify(GameEvent.LIFE_GAINED);
+    }
+
     public int getScore()       { return score; }
     public int getLives()       { return lives; }
     public boolean isGameOver() { return gameOver; }
