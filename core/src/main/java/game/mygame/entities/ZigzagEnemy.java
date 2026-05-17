@@ -33,6 +33,6 @@ public class ZigzagEnemy extends Enemy {
 
     @Override
     public EnemyPrototype clone() {
-        return new ZigzagEnemy(x, y, speed, health, scoreValue, texture);
+        return new ZigzagEnemy(x, y, speed, (int) health, scoreValue, texture);
     }
 }

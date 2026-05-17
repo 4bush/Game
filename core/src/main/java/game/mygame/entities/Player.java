@@ -7,6 +7,8 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.Rectangle;
 import game.mygame.Assets;
+import game.mygame.weapon.WeaponStrategy;
+import game.mygame.weapon.SingleShotStrategy;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,9 +22,10 @@ public class Player {
     private final Texture bulletTexture;
 
     private float shootCooldown = 0f;
-    private static final float SHOOT_DELAY = 0.25f;
 
     private final List<Bullet> bullets = new ArrayList<>();
+
+    private WeaponStrategy currentStrategy;
 
     public Player(float startX, float startY) {
         this.x = startX;
@@ -33,6 +36,9 @@ public class Player {
         this.sprite.setPosition(x, y);
 
         this.bulletTexture = Assets.manager.get("laserBlue01.png", com.badlogic.gdx.graphics.Texture.class);
+
+        // Инициализировать стратегию по умолчанию
+        this.currentStrategy = new SingleShotStrategy();
     }
 
     public void update(float delta) {
@@ -49,8 +55,10 @@ public class Player {
 
         shootCooldown -= delta;
         if (Gdx.input.isKeyPressed(Input.Keys.SPACE) && shootCooldown <= 0) {
-            bullets.add(new Bullet(x + sprite.getWidth() / 2 - 4, y + sprite.getHeight(), 500f, bulletTexture));
-            shootCooldown = SHOOT_DELAY;
+            // Использовать текущую стратегию для стрельбы
+            List<Bullet> newBullets = currentStrategy.shoot(x, y, sprite.getWidth(), sprite.getHeight(), bulletTexture);
+            bullets.addAll(newBullets);
+            shootCooldown = currentStrategy.getShootDelay();
         }
 
         for (Bullet b : bullets) b.update(delta);
@@ -71,4 +79,21 @@ public class Player {
     public float getY() { return y; }
     public float getWidth() { return sprite.getWidth(); }
     public float getHeight() { return sprite.getHeight(); }
+
+    /**
+     * Установить новую стратегию вооружения.
+     */
+    public void setWeaponStrategy(WeaponStrategy strategy) {
+        if (strategy != null) {
+            this.currentStrategy = strategy;
+            this.shootCooldown = 0; // Сбросить кулдаун при смене стратегии
+        }
+    }
+
+    /**
+     * Получить текущую стратегию вооружения.
+     */
+    public WeaponStrategy getCurrentStrategy() {
+        return currentStrategy;
+    }
 }

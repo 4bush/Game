@@ -32,7 +32,6 @@ public class PlayingState implements State, GameEventListener {
     private String statusMessage = "";
 
     private boolean bossActive = false;
-    private int lastBossScoreThreshold = 0;
 
     @Override
     public void enter() {
@@ -41,11 +40,13 @@ public class PlayingState implements State, GameEventListener {
             60f
         );
 
+
         enemyFactory = new EnemyFactory(
             Assets.enemyGreen,
             Assets.enemyRed,
             Assets.enemyBlack,
-            Assets.enemyGreen
+            Assets.enemyGreen,
+            Assets.bossTexture
         );
 
         font = new BitmapFont();
@@ -56,8 +57,7 @@ public class PlayingState implements State, GameEventListener {
         spawnInterval = 2.0f;
         statusMessage = "";
         bossActive = false;
-        lastBossScoreThreshold = 0;
-
+        nextBossScore = 1000;
         GameManager.getInstance().addListener(this);
     }
 
@@ -78,12 +78,15 @@ public class PlayingState implements State, GameEventListener {
         enemies.removeIf(e -> !e.isAlive());
     }
 
+    private int nextBossScore = 1000;
     private void checkBossSpawnCondition() {
-        GameManager gm = GameManager.getInstance();
-        int currentScore = gm.getScore();
+        int currentScore = GameManager.getInstance().getScore();
 
-        if (currentScore > 0 && (currentScore / 400) > lastBossScoreThreshold) {
-            lastBossScoreThreshold = currentScore / 400;
+        if (!bossActive && currentScore >= nextBossScore) {
+
+            System.out.println("BOSS SPAWNED AT SCORE: " + currentScore);
+
+            nextBossScore += 1000;
             triggerBossFight();
         }
     }

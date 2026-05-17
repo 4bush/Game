@@ -2,7 +2,6 @@ package game.mygame;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.InputMultiplexer;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -10,9 +9,11 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import game.mygame.observer.GameEvent;
 import game.mygame.observer.GameEventListener;
 import game.mygame.state.GameOverState;
+import game.mygame.state.GameState;
 import game.mygame.state.MainMenuState;
-import game.mygame.state.PlayingState;
+import game.mygame.state.PauseState;
 import game.mygame.state.State;
+import game.mygame.state.StateManager;
 
 public class GameScreen implements Screen, GameEventListener {
 
@@ -20,13 +21,11 @@ public class GameScreen implements Screen, GameEventListener {
     private final SpriteBatch batch;
     private final OrthographicCamera camera;
 
-    private State currentState;
+    private final StateManager stateManager;
     private final MainMenuState mainMenuState;
-    private final PlayingState playingState;
+    private final GameState gameState;
+    private final PauseState pauseState;
     private final GameOverState gameOverState;
-
-    private final PauseOverlay pauseOverlay;
-    private final InputMultiplexer gameplayInputMultiplexer;
 
     public GameScreen(SpaceShooter game) {
         this.game = game;
@@ -37,126 +36,82 @@ public class GameScreen implements Screen, GameEventListener {
 
         Assets.load();
 
-        // 1. Сначала создаем базовое игровое состояние
-        playingState = new PlayingState();
-        gameplayInputMultiplexer = new InputMultiplexer(); // Сюда подключаются процессоры ввода из playingState
+        // Initialize state manager and states
+        stateManager = new StateManager();
+        mainMenuState = new MainMenuState();
+        gameState = new GameState();
+        pauseState = new PauseState();
+        gameOverState = new GameOverState();
 
-        // 2. Создаем Главное Меню (ошибка исчезнет, так как оно инициализируется раньше паузы)
-        mainMenuState = new MainMenuState(batch,
-            () -> {
-                GameManager.getInstance().init(); // Сброс очков и жизней перед стартом
-                switchState(playingState);
-            },
-            () -> System.out.println("Credits clicked!"),
-            () -> Gdx.app.exit()
-        );
-
-        // 3. Создаем Экран Game Over
-        gameOverState = new GameOverState(batch,
-            () -> {
-                GameManager.getInstance().init(); // Сброс очков для перезапуска
-                switchState(playingState);
-            },
-            () -> switchState(mainMenuState) // Возврат в главное меню
-        );
-
-        // 4. Теперь создаем Паузу (теперь mainMenuState уже определен и лямбда сработает корректно)
-        pauseOverlay = new PauseOverlay(batch,
-            () -> GameManager.getInstance().setPaused(false), // Кнопка Resume
-            () -> {
-                GameManager.getInstance().setPaused(false);   // Кнопка Quit (снимаем паузу и в меню)
-                switchState(mainMenuState);
-            }
-        );
-
-        // Старт игры начинается с Главного Меню
-        currentState = mainMenuState;
-        currentState.enter();
+        // Start with main menu state
+        stateManager.changeState(mainMenuState);
 
         GameManager.getInstance().addListener(this);
     }
 
     @Override
     public void render(float delta) {
-        GameManager gm = GameManager.getInstance();
+        try {
+            // Handle input for state transitions
+            if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+                State current = stateManager.getCurrentState();
+                if (current instanceof GameState) {
+                    stateManager.changeState(pauseState);
+                } else if (current instanceof PauseState || current instanceof GameOverState) {
+                    Gdx.app.exit();
+                }
+            }
 
-        // Пауза по кнопке ESC работает только во время живого геймплея
-        if (currentState == playingState && Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            gm.setPaused(!gm.isPaused());
-        }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE) || Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+                State current = stateManager.getCurrentState();
+                if (current instanceof MainMenuState) {
+                    GameManager.getInstance().init();
+                    stateManager.changeState(gameState);
+                } else if (current instanceof PauseState) {
+                    stateManager.changeState(gameState);
+                } else if (current instanceof GameOverState) {
+                    GameManager.getInstance().init();
+                    stateManager.changeState(mainMenuState);
+                }
+            }
 
-        // Обновляем логику игры, только если нет паузы
-        if (!gm.isPaused()) {
-            currentState.update(delta);
-        }
+            // Update and render
+            camera.update();
+            batch.setProjectionMatrix(camera.combined);
+            batch.begin();
 
-        camera.update();
-        batch.setProjectionMatrix(camera.combined);
-        batch.begin();
+            stateManager.update(delta);
+            stateManager.render(batch);
 
-        currentState.render(batch);
-
-        batch.end();
-
-        // Отрисовка затемненного оверлея поверх кадра игры при паузе
-        if (gm.isPaused() && currentState == playingState) {
-            pauseOverlay.render();
+            batch.end();
+        } catch (Exception e) {
+            System.err.println("Error in GameScreen render: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     @Override
     public void onGameEvent(GameEvent event) {
         if (event == GameEvent.GAME_OVER) {
-            switchState(gameOverState);
-        } else if (event == GameEvent.GAME_PAUSED) {
-            // Переключаем фокус ввода на оверлей паузы, чтобы кнопки нажимались
-            Gdx.input.setInputProcessor(pauseOverlay.getStage());
-        } else if (event == GameEvent.GAME_RESUMED) {
-            // Возвращаем управление обратно игровому процессу
-            if (currentState == playingState) {
-                Gdx.input.setInputProcessor(gameplayInputMultiplexer);
-            }
-        }
-    }
-
-    private void switchState(State newState) {
-        if (currentState != null) {
-            currentState.exit();
-        }
-        currentState = newState;
-        currentState.enter();
-
-        // Если перешли в состояние игры — активируем игровой мультиплексор ввода
-        if (newState == playingState) {
-            Gdx.input.setInputProcessor(gameplayInputMultiplexer);
+            stateManager.changeState(gameOverState);
         }
     }
 
     @Override
     public void dispose() {
         GameManager.getInstance().removeListener(this);
-        if (currentState != null) {
-            currentState.exit();
-        }
-        if (mainMenuState != null) mainMenuState.dispose();
-        if (gameOverState != null) gameOverState.dispose();
         Assets.dispose();
-        pauseOverlay.dispose();
+        stateManager.dispose();
     }
 
     @Override public void show() {}
 
     @Override
     public void resize(int w, int h) {
-        pauseOverlay.resize(w, h);
-        if (mainMenuState != null) mainMenuState.resize(w, h);
-        if (gameOverState != null) gameOverState.resize(w, h);
     }
 
     @Override public void pause() {
-        if (currentState == playingState) {
-            GameManager.getInstance().setPaused(true);
-        }
+        GameManager.getInstance().setPaused(true);
     }
 
     @Override public void resume() {}
