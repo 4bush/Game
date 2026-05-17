@@ -116,6 +116,16 @@ public class PlayingState implements State, GameEventListener {
             e.draw(batch);
         }
 
+        // Draw boss bullets
+        for (Enemy e : enemies) {
+            if (e instanceof Boss) {
+                Boss b = (Boss) e;
+                for (game.mygame.entities.BossBullet bb : b.getBullets()) {
+                    bb.draw(batch);
+                }
+            }
+        }
+
         font.draw(batch, "Score: " + gm.getScore(), 10, Gdx.graphics.getHeight() - 10);
         font.draw(batch, "Lives: " + gm.getLives(), 10, Gdx.graphics.getHeight() - 35);
 
@@ -178,6 +188,18 @@ public class PlayingState implements State, GameEventListener {
                     if (!enemy.isAlive()) {
                         gm.addScore(enemy.getScoreValue());
                         gm.notify(GameEvent.ENEMY_KILLED);
+                    }
+                }
+            }
+
+            // Boss bullets hit player
+            if (enemy instanceof Boss) {
+                Boss b = (Boss) enemy;
+                for (game.mygame.entities.BossBullet bb : b.getBullets()) {
+                    if (!bb.isAlive()) continue;
+                    if (bb.getBounds().overlaps(player.getBounds())) {
+                        bb.destroy();
+                        gm.loseLife();
                     }
                 }
             }

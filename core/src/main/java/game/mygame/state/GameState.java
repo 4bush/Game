@@ -39,6 +39,9 @@ public class GameState implements State, GameEventListener {
     private String statusMessage = "";
     private boolean isActive = false;
 
+    private boolean bossActive = false;
+    private int nextBossScore = 1000;
+
     // Доступные стратегии вооружения
     private final WeaponStrategy[] strategies = new WeaponStrategy[4];
     private String weaponSwitchMessage = "";
@@ -85,10 +88,20 @@ public class GameState implements State, GameEventListener {
         if (!isActive) return;
 
         player.update(delta);
-        spawnEnemies(delta);
 
+        if (!bossActive) {
+            spawnEnemies(delta);
+            checkBossSpawnCondition();
+        }
+
+        // Update enemies; provide player position to Boss so it can aim
         for (Enemy e : enemies) {
-            e.update(delta);
+            if (e instanceof Boss) {
+                Boss b = (Boss) e;
+                b.update(delta, player.getX() + player.getWidth() / 2f, player.getY() + player.getHeight() / 2f);
+            } else {
+                e.update(delta);
+            }
         }
 
         checkCollisions();
@@ -122,7 +135,7 @@ public class GameState implements State, GameEventListener {
 
         // Отобразить текущую стратегию вооружения с полной информацией
         String weaponInfo = "Weapon: " + player.getCurrentStrategy().getDisplayName() +
-                           " | Dmg:" + String.format("%.1f", player.getCurrentStrategy().getDamage());
+            " | Dmg:" + String.format("%.1f", player.getCurrentStrategy().getDamage());
         font.draw(batch, weaponInfo, 10, Gdx.graphics.getHeight() - 60);
 
         // Отобразить подсказку по переключению оружия
@@ -156,6 +169,32 @@ public class GameState implements State, GameEventListener {
         }
         enemies.clear();
         isActive = false;
+    }
+
+    private void checkBossSpawnCondition() {
+        int currentScore = GameManager.getInstance().getScore();
+
+        if (!bossActive && currentScore >= nextBossScore) {
+
+            System.out.println("BOSS SPAWNED AT SCORE: " + currentScore);
+
+            nextBossScore += 1000;
+            triggerBossFight();
+        }
+    }
+
+    private void triggerBossFight() {
+        bossActive = true;
+        statusMessage = "WARNING: BOSS APPROACHING!";
+
+        // Center boss at top boundary above active viewport layout
+        float bossX = Gdx.graphics.getWidth() / 2f - 32f;
+        float bossY = Gdx.graphics.getHeight() + 40f;
+
+        Enemy boss = enemyFactory.create(EnemyFactory.EnemyType.BOSS, bossX, bossY);
+        enemies.add(boss);
+
+        GameManager.getInstance().notify(GameEvent.BOSS_SPAWNED);
     }
 
     private void spawnEnemies(float delta) {
@@ -247,7 +286,7 @@ public class GameState implements State, GameEventListener {
             float enemyY = enemy.getBounds().y + enemy.getBounds().height / 2;
 
             float distance = (float) Math.sqrt((bulletX - enemyX) * (bulletX - enemyX) +
-                                              (bulletY - enemyY) * (bulletY - enemyY));
+                (bulletY - enemyY) * (bulletY - enemyY));
 
             if (distance <= splashRadius) {
                 // Урон зависит от стратегии (Splash вернёт 0.25)
@@ -273,6 +312,10 @@ public class GameState implements State, GameEventListener {
                 break;
             case GAME_OVER:
                 statusMessage = "";
+                break;
+            case BOSS_DEFEATED:
+                bossActive = false;
+                statusMessage = "BOSS DEFEATED! Endless loop resumed.";
                 break;
             default:
                 break;
