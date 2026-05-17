@@ -8,5 +8,6 @@ public enum GameEvent {
     GAME_PAUSED,
     GAME_RESUMED,
     BOSS_SPAWNED,
-    BOSS_DEFEATED
+    BOSS_DEFEATED,
+    POWERUP_COLLECTED
 }

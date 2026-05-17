@@ -26,6 +26,7 @@ public class GameState implements State, GameEventListener {
 
     private Player player;
     private final List<Enemy> enemies = new ArrayList<>();
+    private final List<PowerUp> powerUps = new ArrayList<>();
     private EnemyFactory enemyFactory;
 
     private float spawnTimer = 0f;
@@ -100,6 +101,10 @@ public class GameState implements State, GameEventListener {
             }
         }
 
+        // Update power-ups
+        for (PowerUp p : powerUps) p.update(delta);
+        powerUps.removeIf(p -> !p.isAlive());
+
         checkCollisions();
         enemies.removeIf(e -> !e.isAlive());
 
@@ -133,6 +138,11 @@ public class GameState implements State, GameEventListener {
                     bb.draw(batch);
                 }
             }
+        }
+
+        // Draw power-ups
+        for (PowerUp p : powerUps) {
+            p.draw(batch);
         }
 
         // Draw HUD
@@ -219,6 +229,12 @@ public class GameState implements State, GameEventListener {
 
             enemies.add(enemyFactory.create(type, x, y));
 
+            // Small chance to spawn a power-up at the same X
+            if (MathUtils.random() < 0.08f) {
+                PowerUp.Type pt = PowerUp.Type.values()[MathUtils.random(0, PowerUp.Type.values().length - 1)];
+                powerUps.add(new PowerUp(x, MathUtils.random(Gdx.graphics.getHeight() + 10f, Gdx.graphics.getHeight() + 80f), pt));
+            }
+
             spawnInterval = Math.max(0.5f, spawnInterval - 0.05f);
         }
     }
@@ -285,6 +301,17 @@ public class GameState implements State, GameEventListener {
             if (enemy.getBounds().overlaps(player.getBounds())) {
                 enemy.hit(999);
                 gm.loseLife();
+            }
+        }
+
+        // PowerUp - Player collision
+        List<PowerUp> powerCopy = new ArrayList<>(powerUps);
+        for (PowerUp p : powerCopy) {
+            if (!p.isAlive()) continue;
+            if (p.getBounds().overlaps(player.getBounds())) {
+                p.collect();
+                powerUps.remove(p);
+                GameManager.getInstance().notify(game.mygame.observer.GameEvent.POWERUP_COLLECTED);
             }
         }
     }
