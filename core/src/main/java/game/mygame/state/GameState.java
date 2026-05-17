@@ -9,7 +9,11 @@ import com.badlogic.gdx.math.MathUtils;
 
 import game.mygame.Assets;
 import game.mygame.GameManager;
-import game.mygame.entities.*;
+import game.mygame.entities.Bullet;
+import game.mygame.entities.Enemy;
+import game.mygame.entities.Player;
+import game.mygame.entities.PierceBullet;
+import game.mygame.entities.SplashBullet;
 import game.mygame.factory.EnemyFactory;
 import game.mygame.observer.GameEvent;
 import game.mygame.observer.GameEventListener;
@@ -18,7 +22,8 @@ import game.mygame.weapon.SingleShotStrategy;
 import game.mygame.weapon.DoubleShotStrategy;
 import game.mygame.weapon.PierceStrategy;
 import game.mygame.weapon.SplashStrategy;
-
+import game.mygame.entities.PowerUp;
+import game.mygame.entities.Boss;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,12 +39,12 @@ public class GameState implements State, GameEventListener {
 
     private BitmapFont font;
     private String statusMessage = "";
+    private float statusMessageTimer = 0f;
     private boolean isActive = false;
 
     private boolean bossActive = false;
     private int nextBossScore = 1000;
 
-    // Доступные стратегии вооружения
     private final WeaponStrategy[] strategies = new WeaponStrategy[4];
     private String weaponSwitchMessage = "";
     private float weaponSwitchMessageTimer = 0f;
@@ -68,13 +73,11 @@ public class GameState implements State, GameEventListener {
         statusMessage = "";
         isActive = true;
 
-        // Инициализировать стратегии вооружения
         strategies[0] = new SingleShotStrategy();
         strategies[1] = new DoubleShotStrategy();
         strategies[2] = new PierceStrategy();
         strategies[3] = new SplashStrategy();
 
-        // Установить первую стратегию (SingleShot)
         player.setWeaponStrategy(strategies[0]);
 
         GameManager.getInstance().addListener(this);
@@ -91,7 +94,6 @@ public class GameState implements State, GameEventListener {
             checkBossSpawnCondition();
         }
 
-        // Update enemies; provide player position to Boss so it can aim
         for (Enemy e : enemies) {
             if (e instanceof Boss) {
                 Boss b = (Boss) e;
@@ -101,18 +103,21 @@ public class GameState implements State, GameEventListener {
             }
         }
 
-        // Update power-ups
         for (PowerUp p : powerUps) p.update(delta);
         powerUps.removeIf(p -> !p.isAlive());
 
         checkCollisions();
         enemies.removeIf(e -> !e.isAlive());
 
-        // Обработать смену стратегии вооружения
         handleWeaponSwitch();
 
-        // Обновить таймер сообщения о смене оружия
         weaponSwitchMessageTimer -= delta;
+        if (statusMessageTimer > 0f) {
+            statusMessageTimer -= delta;
+            if (statusMessageTimer <= 0f) {
+                statusMessage = "";
+            }
+        }
     }
 
     @Override
@@ -121,16 +126,13 @@ public class GameState implements State, GameEventListener {
 
         GameManager gm = GameManager.getInstance();
 
-        // Draw background
         batch.draw(Assets.background, 0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
 
-        // Draw player and enemies
         player.draw(batch);
         for (Enemy e : enemies) {
             e.draw(batch);
         }
 
-        // Draw boss bullets (if any)
         for (Enemy e : enemies) {
             if (e instanceof game.mygame.entities.Boss) {
                 game.mygame.entities.Boss b = (game.mygame.entities.Boss) e;
@@ -139,22 +141,17 @@ public class GameState implements State, GameEventListener {
                 }
             }
         }
-
-        // Draw power-ups
         for (PowerUp p : powerUps) {
             p.draw(batch);
         }
 
-        // Draw HUD
         font.draw(batch, "Score: " + gm.getScore(), 10, Gdx.graphics.getHeight() - 10);
         font.draw(batch, "Lives: " + gm.getLives(), 10, Gdx.graphics.getHeight() - 35);
 
-        // Отобразить текущую стратегию вооружения с полной информацией
         String weaponInfo = "Weapon: " + player.getCurrentStrategy().getDisplayName() +
             " | Dmg:" + String.format("%.1f", player.getCurrentStrategy().getDamage());
         font.draw(batch, weaponInfo, 10, Gdx.graphics.getHeight() - 60);
 
-        // Отобразить подсказку по переключению оружия
         font.setColor(Color.YELLOW);
         font.getData().setScale(1f);
         font.draw(batch, "Press 1-4 to switch weapons", 10, 30);
@@ -202,8 +199,7 @@ public class GameState implements State, GameEventListener {
     private void triggerBossFight() {
         bossActive = true;
         statusMessage = "WARNING: BOSS APPROACHING!";
-
-        // Center boss at top boundary above active viewport layout
+        statusMessageTimer = 2f;
         float bossX = Gdx.graphics.getWidth() / 2f - 32f;
         float bossY = Gdx.graphics.getHeight() + 40f;
 
@@ -228,8 +224,6 @@ public class GameState implements State, GameEventListener {
             else                type = EnemyFactory.EnemyType.SLOW;
 
             enemies.add(enemyFactory.create(type, x, y));
-
-            // Small chance to spawn a power-up at the same X
             if (MathUtils.random() < 0.08f) {
                 PowerUp.Type pt = PowerUp.Type.values()[MathUtils.random(0, PowerUp.Type.values().length - 1)];
                 powerUps.add(new PowerUp(x, MathUtils.random(Gdx.graphics.getHeight() + 10f, Gdx.graphics.getHeight() + 80f), pt));
@@ -241,27 +235,20 @@ public class GameState implements State, GameEventListener {
 
     private void checkCollisions() {
         GameManager gm = GameManager.getInstance();
-
-        // Create a copy of enemies list to avoid ConcurrentModificationException
         List<Enemy> enemiesCopy = new ArrayList<>(enemies);
 
         for (Enemy enemy : enemiesCopy) {
             if (!enemy.isAlive()) continue;
 
-            // Bullet-Enemy collision
-            // Create a copy to avoid ConcurrentModificationException
             List<Bullet> bulletsCopy = new ArrayList<>(player.getBullets());
             for (Bullet bullet : bulletsCopy) {
                 if (!bullet.isAlive()) continue;
                 if (bullet.getBounds().overlaps(enemy.getBounds())) {
-                    // Получить урон из текущей стратегии
                     float damage = player.getCurrentStrategy().getDamage();
 
-                    // Обработать специальные типы пуль
                     if (bullet instanceof PierceBullet) {
-                        // Пробивающая пуля - не уничтожается, но наносит урон
                         PierceBullet pierceBullet = (PierceBullet) bullet;
-                        enemy.hit(damage); // Урон зависит от стратегии (float)
+                        enemy.hit(damage);
                         pierceBullet.onEnemyHit();
                         if (!enemy.isAlive()) {
                             gm.addScore(enemy.getScoreValue());
@@ -284,23 +271,32 @@ public class GameState implements State, GameEventListener {
                     }
                 }
             }
-
-            // Boss bullets hit player
             if (enemy instanceof game.mygame.entities.Boss) {
                 game.mygame.entities.Boss b = (game.mygame.entities.Boss) enemy;
                 for (game.mygame.entities.BossBullet bb : b.getBullets()) {
                     if (!bb.isAlive()) continue;
                     if (bb.getBounds().overlaps(player.getBounds())) {
                         bb.destroy();
-                        gm.loseLife();
+                        if (player.hasShield()) {
+                            player.consumeShield();
+                            statusMessage = "Shield absorbed a hit!";
+                            statusMessageTimer = 2f;
+                        } else {
+                            gm.loseLife();
+                        }
                     }
                 }
             }
 
-            // Player-Enemy collision
             if (enemy.getBounds().overlaps(player.getBounds())) {
                 enemy.hit(999);
-                gm.loseLife();
+                if (player.hasShield()) {
+                    player.consumeShield();
+                    statusMessage = "Shield absorbed a collision!";
+                    statusMessageTimer = 2f;
+                } else {
+                    gm.loseLife();
+                }
             }
         }
 
@@ -309,16 +305,14 @@ public class GameState implements State, GameEventListener {
         for (PowerUp p : powerCopy) {
             if (!p.isAlive()) continue;
             if (p.getBounds().overlaps(player.getBounds())) {
-                p.collect();
+                String powerupMessage = p.collect(player);
                 powerUps.remove(p);
+                statusMessage = powerupMessage;
+                statusMessageTimer = 2f;
                 GameManager.getInstance().notify(game.mygame.observer.GameEvent.POWERUP_COLLECTED);
             }
         }
     }
-
-    /**
-     * Нанести урон всем врагам в радиусе взрыва.
-     */
     private void damageSurroundingEnemies(SplashBullet splashBullet, GameManager gm, List<Enemy> enemies, float damage) {
         float splashRadius = splashBullet.getSplashRadius();
         float bulletX = splashBullet.getBounds().x;
@@ -334,7 +328,6 @@ public class GameState implements State, GameEventListener {
                 (bulletY - enemyY) * (bulletY - enemyY));
 
             if (distance <= splashRadius) {
-                // Урон зависит от стратегии (Splash вернёт 0.25)
                 enemy.hit(damage);
                 if (!enemy.isAlive()) {
                     gm.addScore(enemy.getScoreValue());
@@ -346,14 +339,20 @@ public class GameState implements State, GameEventListener {
 
     @Override
     public void onGameEvent(GameEvent event) {
-        if (!isActive) return;  // Ignore events if state is not active
+        if (!isActive) return;
 
         switch (event) {
             case ENEMY_KILLED:
                 statusMessage = "+Score!";
+                statusMessageTimer = 1.5f;
                 break;
             case LIFE_LOST:
                 statusMessage = "Ouch! Lives left: " + GameManager.getInstance().getLives();
+                statusMessageTimer = 2f;
+                break;
+            case LIFE_GAINED:
+                statusMessage = "+1 Life!";
+                statusMessageTimer = 2f;
                 break;
             case GAME_OVER:
                 statusMessage = "";
@@ -366,10 +365,6 @@ public class GameState implements State, GameEventListener {
                 break;
         }
     }
-
-    /**
-     * Обработать переключение стратегии вооружения по клавишам 1-4.
-     */
     private void handleWeaponSwitch() {
         if (Gdx.input.isKeyJustPressed(Input.Keys.NUM_1)) {
             switchWeapon(0);
@@ -381,15 +376,11 @@ public class GameState implements State, GameEventListener {
             switchWeapon(3);
         }
     }
-
-    /**
-     * Переключить на стратегию с указанным индексом.
-     */
     private void switchWeapon(int index) {
         if (index >= 0 && index < strategies.length && strategies[index] != null) {
             player.setWeaponStrategy(strategies[index]);
             weaponSwitchMessage = "Weapon: " + strategies[index].getDisplayName();
-            weaponSwitchMessageTimer = 1.5f; // Показать сообщение на 1.5 секунды
+            weaponSwitchMessageTimer = 1.5f;
         }
     }
 }
