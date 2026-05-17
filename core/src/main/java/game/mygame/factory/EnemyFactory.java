@@ -5,10 +5,6 @@ import game.mygame.entities.Enemy;
 import game.mygame.entities.Boss;
 import game.mygame.entities.ZigzagEnemy;
 
-/**
- * Handles creation of game adversaries.
- * Open/Closed Principle (OCP) compliant: easily accepts new enemy subclasses.
- */
 public class EnemyFactory {
     public enum EnemyType {
         SLOW,
@@ -17,17 +13,24 @@ public class EnemyFactory {
         ZIGZAG,
         BOSS
     }
-
+    private final Texture bossTexture;
     private final Texture slowTexture;
     private final Texture fastTexture;
     private final Texture tankTexture;
     private final Texture zigzagTexture;
 
-    public EnemyFactory(Texture slowTexture, Texture fastTexture, Texture tankTexture, Texture zigzagTexture) {
+    public EnemyFactory(
+        Texture slowTexture,
+        Texture fastTexture,
+        Texture tankTexture,
+        Texture zigzagTexture,
+        Texture bossTexture
+    ) {
         this.slowTexture = slowTexture;
         this.fastTexture = fastTexture;
         this.tankTexture = tankTexture;
         this.zigzagTexture = zigzagTexture;
+        this.bossTexture = bossTexture;
     }
 
     public Enemy create(EnemyType type, float x, float y) {
@@ -39,8 +42,7 @@ public class EnemyFactory {
             case ZIGZAG:
                 return new ZigzagEnemy(x, y, 100f, 2, 150, zigzagTexture);
             case BOSS:
-                // Instantiates a robust boss enemy with 25 HP and a 400 point reward
-                return new Boss(x, y, 25, 400, tankTexture);
+                return new Boss(x, y, 25, 400, bossTexture);
             case SLOW:
             default:
                 return new Enemy(x, y, 120f, 2, 100, slowTexture);
