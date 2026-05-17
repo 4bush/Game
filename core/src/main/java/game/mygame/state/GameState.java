@@ -9,11 +9,7 @@ import com.badlogic.gdx.math.MathUtils;
 
 import game.mygame.Assets;
 import game.mygame.GameManager;
-import game.mygame.entities.Bullet;
-import game.mygame.entities.Enemy;
-import game.mygame.entities.Player;
-import game.mygame.entities.PierceBullet;
-import game.mygame.entities.SplashBullet;
+import game.mygame.entities.*;
 import game.mygame.factory.EnemyFactory;
 import game.mygame.observer.GameEvent;
 import game.mygame.observer.GameEventListener;
@@ -127,6 +123,16 @@ public class GameState implements State, GameEventListener {
         player.draw(batch);
         for (Enemy e : enemies) {
             e.draw(batch);
+        }
+
+        // Draw boss bullets (if any)
+        for (Enemy e : enemies) {
+            if (e instanceof game.mygame.entities.Boss) {
+                game.mygame.entities.Boss b = (game.mygame.entities.Boss) e;
+                for (game.mygame.entities.BossBullet bb : b.getBullets()) {
+                    bb.draw(batch);
+                }
+            }
         }
 
         // Draw HUD
@@ -259,6 +265,18 @@ public class GameState implements State, GameEventListener {
                             gm.addScore(enemy.getScoreValue());
                             gm.notify(GameEvent.ENEMY_KILLED);
                         }
+                    }
+                }
+            }
+
+            // Boss bullets hit player
+            if (enemy instanceof game.mygame.entities.Boss) {
+                game.mygame.entities.Boss b = (game.mygame.entities.Boss) enemy;
+                for (game.mygame.entities.BossBullet bb : b.getBullets()) {
+                    if (!bb.isAlive()) continue;
+                    if (bb.getBounds().overlaps(player.getBounds())) {
+                        bb.destroy();
+                        gm.loseLife();
                     }
                 }
             }

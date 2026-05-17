@@ -2,6 +2,7 @@ package game.mygame.entities;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import game.mygame.GameManager;
@@ -35,9 +36,9 @@ public class Boss extends Enemy {
         super(x, y, 100f, health, scoreValue, texture);
         this.maxHealth = health;
         this.currentPhase = BossPhase.ENTRY;
-        // lower final position so boss is more visible on screen
-        this.targetY = Gdx.graphics.getHeight() - 220f;
-        // scale boss down a bit so it's not huge
+        // spawn lower so the boss is visible and can shoot properly
+        this.targetY = Gdx.graphics.getHeight() - 260f;
+        // keep a logical width/height for movement and bullets, but drawing will be scaled in draw()
         this.width = texture.getWidth() * 0.8f;
         this.height = texture.getHeight() * 0.8f;
     }
@@ -80,7 +81,7 @@ public class Boss extends Enemy {
 
             case PHASE_3:
                 moveHorizontally(delta, 220f);
-                // aggressive: triple spread, fast rate, occasional dive-and-reset behavior removed in favor of continuous shooting
+                // aggressive: triple spread, fast rate
                 handleShooting(playerCenterX, playerCenterY, 0.6f, 320f, 22f, 3);
                 break;
 
@@ -119,9 +120,6 @@ public class Boss extends Enemy {
             float ry = dirX * sin + dirY * cos;
             float vx = rx * bulletSpeed;
             float vy = ry * bulletSpeed;
-            BossBullet bb = new BossBullet(centerX, centerY, vx, vy, size, com.badlogic.gdx.Gdx.app.getApplicationListener() == null ? null : null);
-            // Use Assets texture directly to avoid extra dependency here; will set texture after creation if null
-            // but safer to use Assets.explosion; use fully qualified access at runtime
             bullets.add(new BossBullet(centerX, centerY, vx, vy, size, game.mygame.Assets.explosion));
         }
     }
@@ -164,6 +162,13 @@ public class Boss extends Enemy {
     @Override
     public Rectangle getBounds() {
         return new Rectangle(x, y, width, height);
+    }
+
+    @Override
+    public void draw(com.badlogic.gdx.graphics.g2d.SpriteBatch batch) {
+        if (alive) {
+            batch.draw(texture, x, y, width, height);
+        }
     }
 
     public float getHealthPercentage() {
