@@ -66,7 +66,7 @@ public class Boss extends Enemy {
                 if (attackTimer > 1.5f) {
                     y -= 350f * delta;
                     if (y < 150f) {
-                        y = targetY; // Reset position back to top after swoop complete
+                        y = targetY;
                         attackTimer = 0f;
                     }
                 }
@@ -95,7 +95,7 @@ public class Boss extends Enemy {
     }
 
     @Override
-    public void hit(int damage) {
+    public void hit(float damage) {
         if (!alive) return;
 
         health -= damage;
