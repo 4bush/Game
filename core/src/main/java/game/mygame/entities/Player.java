@@ -26,6 +26,9 @@ public class Player {
     private final List<Bullet> bullets = new ArrayList<>();
 
     private WeaponStrategy currentStrategy;
+    private boolean shieldActive = false;
+    private float fireRateMultiplier = 1f;
+    private float fireRateTimer = 0f;
 
     public Player(float startX, float startY) {
         this.x = startX;
@@ -54,11 +57,18 @@ public class Player {
         sprite.setPosition(x, y);
 
         shootCooldown -= delta;
+        if (fireRateTimer > 0f) {
+            fireRateTimer -= delta;
+            if (fireRateTimer <= 0f) {
+                fireRateMultiplier = 1f;
+            }
+        }
+
         if (Gdx.input.isKeyPressed(Input.Keys.SPACE) && shootCooldown <= 0) {
             // Использовать текущую стратегию для стрельбы
             List<Bullet> newBullets = currentStrategy.shoot(x, y, sprite.getWidth(), sprite.getHeight(), bulletTexture);
             bullets.addAll(newBullets);
-            shootCooldown = currentStrategy.getShootDelay();
+            shootCooldown = getEffectiveShootDelay();
         }
 
         for (Bullet b : bullets) b.update(delta);
@@ -88,6 +98,27 @@ public class Player {
             this.currentStrategy = strategy;
             this.shootCooldown = 0; // Сбросить кулдаун при смене стратегии
         }
+    }
+
+    public boolean hasShield() {
+        return shieldActive;
+    }
+
+    public void activateShield() {
+        shieldActive = true;
+    }
+
+    public void consumeShield() {
+        shieldActive = false;
+    }
+
+    public void applyFireRateBoost(float multiplier, float duration) {
+        fireRateMultiplier = Math.min(fireRateMultiplier, multiplier);
+        fireRateTimer = Math.max(fireRateTimer, duration);
+    }
+
+    private float getEffectiveShootDelay() {
+        return Math.max(0.05f, currentStrategy.getShootDelay() * fireRateMultiplier);
     }
 
     /**
